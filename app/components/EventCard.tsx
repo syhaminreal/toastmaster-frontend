@@ -1,25 +1,33 @@
+'use client';
+
 import Image from "next/image";
+import Link from "next/link";
+import { useState } from "react";
 
 interface Props {
   title: string;
   image: string;
+  slug: string; // slug for linking
   date?: string;
   location?: string;
   time?: string;
 }
 
-const EventCard = ({ title, image, date, location, time }: Props) => {
+const EventCard = ({ title, image, slug, date, location, time }: Props) => {
+  const [imgError, setImgError] = useState(false);
+
   return (
-    <div className="flex flex-col gap-3 bg-card text-card-foreground rounded-lg overflow-hidden shadow-lg">
+    <div className="flex flex-col gap-3 bg-card text-card-foreground rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-200">
       
       {/* Event Poster */}
-      <div className="relative w-full h-[300px]">
+      <div className="relative w-full h-[300px] bg-gray-200">
         <Image
-          src={image}
+          src={imgError || !image ? '/placeholder-event.jpg' : image}
           alt={title}
           fill
           className="object-cover"
-          priority // disables lazy loading for main poster
+          priority
+          onError={() => setImgError(true)}
         />
       </div>
 
@@ -70,8 +78,10 @@ const EventCard = ({ title, image, date, location, time }: Props) => {
           )}
 
         </div>
+
+        </div>
       </div>
-    </div>
+   
   );
 };
 
