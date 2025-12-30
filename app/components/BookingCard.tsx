@@ -1,29 +1,35 @@
 'use client';
 import { useState } from "react";
+import axios from 'axios'; // make sure to install axios
 
 const BookEvent = () => {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-   // Optional: show loading state here if you want
-  // setLoading(true);
+    setError('');
 
-  // Simulate API call delay
-  setTimeout(() => {
-    setSubmitted(true); // Show "Thank you" message
-    // setLoading(false); // Stop loading if you used it
-  }, 1000);
-    
+    try {
+      await axios.post('http://localhost:8000/guest-emails', { email });
+      setSubmitted(true); // Show "Thank you" message
+    } catch (err: any) {
+      console.error(err);
+      if (err.response?.status === 409) {
+        setError('This email is already registered.');
+      } else {
+        setError('Failed to submit email. Try again later.');
+      }
+    }
   };
 
   return (
     <div id="book-event">
       {submitted ? (
-        <p className="text-sm">Thank you for signing up!</p>
+        <p className="text-sm text-green-600">Thank you for signing up!</p>
       ) : (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
           <div>
             <label htmlFor="email">Email Address</label>
             <input
@@ -33,11 +39,13 @@ const BookEvent = () => {
               id="email"
               placeholder="Enter your email address"
               required
-              className="border p-2 rounded"
+              className="border p-2 rounded w-full"
             />
           </div>
 
-          <button type="submit" className="button-submit mt-2">
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+
+          <button type="submit" className="button-submit mt-2 bg-blue-500 text-white p-2 rounded">
             Submit
           </button>
         </form>
