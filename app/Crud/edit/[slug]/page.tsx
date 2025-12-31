@@ -6,40 +6,141 @@ import { useParams, useRouter } from 'next/navigation';
 
 const API = process.env.NEXT_PUBLIC_API_URL!;
 
+enum EventMode {
+  ONLINE = 'online',
+  OFFLINE = 'offline',
+}
+
+interface EventForm {
+  title: string;
+  description: string;
+  overview: string;
+  image: string;
+  venue: string;
+  location: string;
+  date: string;
+  time: string;
+  mode: EventMode;
+  audience: string;
+  agenda: string;
+  organizer: string;
+  tags: string;
+}
+
 export default function EditEventPage() {
-  const { slug } = useParams();
+  const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
-  const [form, setForm] = useState<any>(null);
+
+  const [form, setForm] = useState<EventForm | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    axios.get(`${API}/events/${slug}`)
-      .then(res => setForm(res.data));
+    axios.get(`${API}/events/${slug}`).then((res) => {
+      const d = res.data;
+      setForm({
+        title: d.title,
+        description: d.description,
+        overview: d.overview,
+        image: d.image || '',
+        venue: d.venue,
+        location: d.location,
+        date: d.date,
+        time: d.time,
+        mode: d.mode,
+        audience: d.audience,
+        agenda: d.agenda.join(', '),
+        organizer: d.organizer,
+        tags: d.tags.join(', '),
+      });
+    });
   }, [slug]);
 
-  if (!form) return <p className="p-6">Loading...</p>;
+  if (!form) return <p className="p-6 text-white">Loading...</p>;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    const data = new FormData();
+    data.append('file', file);
+
+    try {
+      setUploading(true);
+      const res = await axios.post(`${API}/files/upload`, data);
+      setForm((prev) => ({ ...prev!, image: res.data.url }));
+    } catch {
+      alert('Image upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await axios.patch(`${API}/events/${slug}`, form);
-    router.push('/events');
+    setSubmitting(true);
+
+    try {
+      await axios.patch(`${API}/events/${slug}`, {
+        ...form,
+        agenda: form.agenda.split(',').map((i) => i.trim()),
+        tags: form.tags.split(',').map((i) => i.trim()),
+      });
+
+      router.push('/Crud'); // redirect to main CRUD page
+    } catch (err) {
+      console.error(err);
+      alert('Event update failed');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-6 max-w-md space-y-3">
-      <h1 className="text-xl font-bold">Edit Event</h1>
+    <div className="max-w-3xl mx-auto p-6 text-white">
+      <h1 className="text-2xl font-bold mb-6">Edit Event</h1>
 
-      {Object.keys(form).map(key => (
-        <input
-          key={key}
-          value={form[key] || ''}
-          onChange={e => setForm({ ...form, [key]: e.target.value })}
-          className="border p-2 w-full"
-        />
-      ))}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input name="title" value={form.title} onChange={handleChange} className="input-dark" />
+        <textarea name="description" value={form.description} onChange={handleChange} className="input-dark h-24" />
+        <textarea name="overview" value={form.overview} onChange={handleChange} className="input-dark h-20" />
 
-      <button className="bg-green-500 text-white px-4 py-2 rounded">
-        Update
-      </button>
-    </form>
+        {/* IMAGE UPLOAD */}
+        <div className="space-y-2">
+          <input type="file" accept="image/*" onChange={handleImageUpload} />
+          {uploading && <p className="text-sm">Uploading...</p>}
+          {form.image && <img src={form.image} alt="preview" className="w-40 rounded border" />}
+        </div>
+
+        <input name="venue" value={form.venue} onChange={handleChange} className="input-dark" />
+        <input name="location" value={form.location} onChange={handleChange} className="input-dark" />
+
+        <div className="grid grid-cols-2 gap-4">
+          <input type="date" name="date" value={form.date} onChange={handleChange} className="input-dark" />
+          <input type="time" name="time" value={form.time} onChange={handleChange} className="input-dark" />
+        </div>
+
+        <select name="mode" value={form.mode} onChange={handleChange} className="input-dark">
+          <option value={EventMode.OFFLINE}>Offline</option>
+          <option value={EventMode.ONLINE}>Online</option>
+        </select>
+
+        <input name="audience" value={form.audience} onChange={handleChange} className="input-dark" />
+        <input name="agenda" value={form.agenda} onChange={handleChange} className="input-dark" />
+        <input name="organizer" value={form.organizer} onChange={handleChange} className="input-dark" />
+        <input name="tags" value={form.tags} onChange={handleChange} className="input-dark" />
+
+        <button
+          type="submit"
+          className="bg-green-600 px-6 py-2 rounded hover:bg-green-700"
+          disabled={submitting}
+        >
+          {submitting ? 'Updating...' : 'Update Event'}
+        </button>
+      </form>
+    </div>
   );
 }
