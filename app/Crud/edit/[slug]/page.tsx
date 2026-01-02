@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 
-const API = process.env.NEXT_PUBLIC_API_URL!;
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 enum EventMode {
   ONLINE = 'online',
@@ -27,6 +28,14 @@ interface EventForm {
   tags: string;
 }
 
+// ✅ Safe URL helper for Next.js Image
+const getImageSrc = (image?: string | null) => {
+  if (!image || image.trim() === '') return '/placeholder-event.jpg';
+  if (image.startsWith('http')) return image;
+  if (image.startsWith('/')) return `${API}${image}`;
+  return '/placeholder-event.jpg';
+};
+
 export default function EditEventPage() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
@@ -34,6 +43,7 @@ export default function EditEventPage() {
   const [form, setForm] = useState<EventForm | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     axios.get(`${API}/events/${slug}`).then((res) => {
@@ -72,6 +82,7 @@ export default function EditEventPage() {
       setUploading(true);
       const res = await axios.post(`${API}/files/upload`, data);
       setForm((prev) => ({ ...prev!, image: res.data.url }));
+      setImgError(false); // reset error after upload
     } catch {
       alert('Image upload failed');
     } finally {
@@ -90,7 +101,7 @@ export default function EditEventPage() {
         tags: form.tags.split(',').map((i) => i.trim()),
       });
 
-      router.push('/Crud'); // redirect to main CRUD page
+      router.push('/Crud');
     } catch (err) {
       console.error(err);
       alert('Event update failed');
@@ -109,10 +120,20 @@ export default function EditEventPage() {
         <textarea name="overview" value={form.overview} onChange={handleChange} className="input-dark h-20" />
 
         {/* IMAGE UPLOAD */}
-        <div className="space-y-2">
+        <div className="space-y-2 relative w-80 h-40">
           <input type="file" accept="image/*" onChange={handleImageUpload} />
           {uploading && <p className="text-sm">Uploading...</p>}
-          {form.image && <img src={form.image} alt="preview" className="w-40 rounded border" />}
+
+          {form.image && (
+            <Image
+              src={imgError ? '/placeholder-event.jpg' : getImageSrc(form.image)}
+              alt="preview"
+              fill
+              className="rounded border object-cover"
+              onError={() => setImgError(true)}
+              unoptimized
+            />
+          )}
         </div>
 
         <input name="venue" value={form.venue} onChange={handleChange} className="input-dark" />

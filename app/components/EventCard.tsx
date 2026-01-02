@@ -18,29 +18,23 @@ const BACKEND_URL = 'http://localhost:8000';
 const EventCard = ({ title, image, slug, date, location, time }: Props) => {
   const [imgError, setImgError] = useState(false);
 
-  // ✅ HARD VALIDATION (prevents Invalid URL crash)
+  // ✅ Return safe URL for Next.js Image
   const getImageSrc = () => {
     if (imgError) return '/placeholder-event.jpg';
+    if (!image || image.trim() === '') return '/placeholder-event.jpg';
 
-    if (!image || image.trim() === '') {
-      return '/placeholder-event.jpg';
-    }
+    // Already absolute URL
+    if (image.startsWith('http')) return image;
 
-    // already absolute (future proof)
-    if (image.startsWith('http')) {
-      return image;
-    }
+    // Relative URL from backend
+    if (image.startsWith('/')) return `${BACKEND_URL}${image}`;
 
-    // must start with /
-    if (!image.startsWith('/')) {
-      return '/placeholder-event.jpg';
-    }
-
-    return `${BACKEND_URL}${image}`;
+    // Fallback
+    return '/placeholder-event.jpg';
   };
 
   return (
-    <Link href={`/event/${slug}`}>
+    <Link href={`/event/${slug}`} className="block">
       <div className="flex flex-col gap-3 bg-card text-card-foreground rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-200 cursor-pointer">
 
         {/* Event Poster */}
@@ -52,14 +46,13 @@ const EventCard = ({ title, image, slug, date, location, time }: Props) => {
             className="object-cover"
             onError={() => setImgError(true)}
             sizes="(max-width: 768px) 100vw, 33vw"
+            unoptimized // ✅ Dev-only: bypass Next.js optimizer for localhost
           />
         </div>
 
         {/* Event Info */}
         <div className="p-4 flex flex-col gap-2">
-          <h3 className="text-[20px] font-semibold line-clamp-1">
-            {title}
-          </h3>
+          <h3 className="text-[20px] font-semibold line-clamp-1">{title}</h3>
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
             {date && <span>{date}</span>}
