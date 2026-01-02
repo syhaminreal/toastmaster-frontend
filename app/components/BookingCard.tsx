@@ -1,8 +1,12 @@
 'use client';
 import { useState } from "react";
-import axios from 'axios'; // make sure to install axios
+import axios from 'axios';
 
-const BookEvent = () => {
+type BookEventProps = {
+  eventTitle: string; // you can also pass eventId or slug if you prefer
+};
+
+const BookEvent = ({ eventTitle }: BookEventProps) => {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
@@ -12,12 +16,15 @@ const BookEvent = () => {
     setError('');
 
     try {
-      await axios.post('http://localhost:8000/guest-emails', { email });
-      setSubmitted(true); // Show "Thank you" message
+      await axios.post('http://localhost:8000/guest-emails', { 
+        email,
+        event: eventTitle, // sending the event with the email
+      });
+      setSubmitted(true);
     } catch (err: any) {
       console.error(err);
       if (err.response?.status === 409) {
-        setError('This email is already registered.');
+        setError('This email is already registered for this event.');
       } else {
         setError('Failed to submit email. Try again later.');
       }
@@ -27,7 +34,9 @@ const BookEvent = () => {
   return (
     <div id="book-event">
       {submitted ? (
-        <p className="text-sm text-green-600">Thank you for signing up!</p>
+        <p className="text-sm text-green-600">
+          Thank you for signing up for {eventTitle}!
+        </p>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-2">
           <div>

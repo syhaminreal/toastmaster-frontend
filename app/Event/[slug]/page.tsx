@@ -226,7 +226,9 @@ const EventDetailPage = ({
 
         <aside className="booking w-full md:w-1/3">
           <div className="signup-card p-4 border rounded-lg shadow-md sticky top-6">
-            <h2 className="text-xl font-semibold mb-2">Book your Spot</h2>
+               <h2 className="text-xl font-semibold mb-2">
+                 Book your Spot at {title}
+                </h2>
             {bookings > 0 ? (
               <p className="text-sm text-gray-600 mb-4">
                 Join {bookings} people who have already booked their spot
@@ -234,7 +236,8 @@ const EventDetailPage = ({
             ) : (
               <p className="text-sm text-gray-600 mb-4">Be first to book your spot!</p>
             )}
-            <BookEvent />
+            <BookEvent eventTitle={title} />
+
           </div>
         </aside>
       </div>
