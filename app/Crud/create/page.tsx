@@ -11,30 +11,16 @@ enum EventMode {
   OFFLINE = 'offline',
 }
 
-interface EventForm {
-  title: string;
-  description: string;
-  overview: string;
-  image: string;
-  venue: string;
-  location: string;
-  date: string;
-  time: string;
-  mode: EventMode;
-  audience: string;
-  agenda: string;
-  organizer: string;
-  tags: string;
-}
-
 export default function CreateEventPage() {
   const router = useRouter();
 
-  const [form, setForm] = useState<EventForm>({
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [form, setForm] = useState({
     title: '',
     description: '',
     overview: '',
-    image: '',
     venue: '',
     location: '',
     date: '',
@@ -46,30 +32,10 @@ export default function CreateEventPage() {
     tags: '',
   });
 
-  const [uploading, setUploading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0]) return;
-    const file = e.target.files[0];
-    const data = new FormData();
-    data.append('file', file);
-
-    try {
-      setUploading(true);
-      const res = await axios.post(`${API}/files/upload`, data);
-      setForm((prev) => ({ ...prev, image: res.data.url }));
-    } catch {
-      alert('Image upload failed');
-    } finally {
-      setUploading(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,13 +43,29 @@ export default function CreateEventPage() {
     setSubmitting(true);
 
     try {
-      await axios.post(`${API}/events`, {
-        ...form,
-        agenda: form.agenda.split(',').map((i) => i.trim()),
-        tags: form.tags.split(',').map((i) => i.trim()),
+      const data = new FormData();
+
+      // append text fields
+      Object.entries(form).forEach(([key, value]) => {
+        data.append(key, value);
       });
 
-      router.push('/Crud'); // Redirect to CRUD main page
+      // append image (REQUIRED)
+      if (!imageFile) {
+        alert('Please select an image');
+        setSubmitting(false);
+        return;
+      }
+
+      data.append('image', imageFile);
+
+      await axios.post(`${API}/events`, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      router.push('/Crud');
     } catch (err) {
       console.error(err);
       alert('Event creation failed');
@@ -95,7 +77,9 @@ export default function CreateEventPage() {
   return (
     <div className="max-w-3xl mx-auto p-6 text-white">
       <h1 className="text-2xl font-bold mb-6">Create Event</h1>
+
       <form onSubmit={handleSubmit} className="space-y-6">
+
         {/* Title */}
         <div>
           <label className="label">Title</label>
@@ -104,107 +88,89 @@ export default function CreateEventPage() {
             value={form.title}
             onChange={handleChange}
             className="input-dark"
-            placeholder="Event title"
+            required
           />
         </div>
 
-        {/* Description + Overview */}
+        {/* Description & Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="label">Description</label>
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              className="input-dark h-28"
-              placeholder="Full description"
-            />
-          </div>
-          <div>
-            <label className="label">Overview</label>
-            <textarea
-              name="overview"
-              value={form.overview}
-              onChange={handleChange}
-              className="input-dark h-28"
-              placeholder="Short overview"
-            />
-          </div>
+          <textarea
+            name="description"
+            placeholder="Description"
+            value={form.description}
+            onChange={handleChange}
+            className="input-dark h-28"
+            required
+          />
+          <textarea
+            name="overview"
+            placeholder="Overview"
+            value={form.overview}
+            onChange={handleChange}
+            className="input-dark h-28"
+            required
+          />
         </div>
 
-        {/* Image Upload */}
+        {/* Image */}
         <div>
           <label className="label">Event Image</label>
-          <input type="file" accept="image/*" onChange={handleImageUpload} className="file-input" />
-          {uploading && <p className="text-sm text-gray-400">Uploading...</p>}
-          {form.image && <img src={form.image} className="mt-2 w-40 rounded border border-gray-600" />}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+            className="file-input"
+            required
+          />
+
+          {imageFile && (
+            <img
+              src={URL.createObjectURL(imageFile)}
+              className="mt-2 w-40 rounded border border-gray-600"
+              alt="preview"
+            />
+          )}
         </div>
 
-        {/* Venue + Location */}
+        {/* Venue & Location */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="label">Venue</label>
-            <input name="venue" value={form.venue} onChange={handleChange} className="input-dark" />
-          </div>
-          <div>
-            <label className="label">Location</label>
-            <input name="location" value={form.location} onChange={handleChange} className="input-dark" />
-          </div>
+          <input name="venue" placeholder="Venue" value={form.venue} onChange={handleChange} className="input-dark" />
+          <input name="location" placeholder="Location" value={form.location} onChange={handleChange} className="input-dark" />
         </div>
 
-        {/* Date + Time */}
+        {/* Date & Time */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="label">Date</label>
-            <input type="date" name="date" value={form.date} onChange={handleChange} className="input-dark" />
-          </div>
-          <div>
-            <label className="label">Time</label>
-            <input type="time" name="time" value={form.time} onChange={handleChange} className="input-dark" />
-          </div>
+          <input type="date" name="date" value={form.date} onChange={handleChange} className="input-dark" />
+          <input type="time" name="time" value={form.time} onChange={handleChange} className="input-dark" />
         </div>
 
-        {/* Mode + Audience */}
+        {/* Mode & Audience */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="label">Mode</label>
-            <select name="mode" value={form.mode} onChange={handleChange} className="input-dark">
-              <option value="offline">Offline</option>
-              <option value="online">Online</option>
-            </select>
-          </div>
-          <div>
-            <label className="label">Audience</label>
-            <input name="audience" value={form.audience} onChange={handleChange} className="input-dark" />
-          </div>
+          <select name="mode" value={form.mode} onChange={handleChange} className="input-dark">
+            <option value="offline">Offline</option>
+            <option value="online">Online</option>
+          </select>
+          <input name="audience" placeholder="Audience" value={form.audience} onChange={handleChange} className="input-dark" />
         </div>
 
-        {/* Agenda + Organizer */}
+        {/* Agenda & Organizer */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="label">Agenda (comma separated)</label>
-            <input name="agenda" value={form.agenda} onChange={handleChange} className="input-dark" />
-          </div>
-          <div>
-            <label className="label">Organizer</label>
-            <input name="organizer" value={form.organizer} onChange={handleChange} className="input-dark" />
-          </div>
+          <input name="agenda" placeholder="Agenda (comma separated)" value={form.agenda} onChange={handleChange} className="input-dark" />
+          <input name="organizer" placeholder="Organizer" value={form.organizer} onChange={handleChange} className="input-dark" />
         </div>
 
         {/* Tags */}
-        <div>
-          <label className="label">Tags (comma separated)</label>
-          <input name="tags" value={form.tags} onChange={handleChange} className="input-dark" />
-        </div>
+        <input name="tags" placeholder="Tags (comma separated)" value={form.tags} onChange={handleChange} className="input-dark" />
 
         {/* Submit */}
         <button
           type="submit"
-          className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded text-white"
           disabled={submitting}
+          className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded"
         >
           {submitting ? 'Creating...' : 'Create Event'}
         </button>
+
       </form>
     </div>
   );
